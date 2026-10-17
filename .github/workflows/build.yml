@@ -1,4 +1,4 @@
-name: Build GKI
+name: Build Y70 6.12.58 modules
 
 on:
   push:
@@ -8,46 +8,69 @@ on:
       - 'Makefile'
       - 'mk/**'
       - 'deps.lst'
-      - 'scripts/fetch-deps.sh'
+      - 'scripts/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build-matrix:
-    strategy:
-      matrix:
-        kmi:
-          - android16-6.12
+  build-y70:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     container:
-      image: ghcr.io/ylarod/ddk-min:${{ matrix.kmi }}-20260313
-      options: --privileged
+      image: ghcr.io/ylarod/ddk-min@sha256:4dd088dc94b391c926cf09215e0a5958f3dfe7d8eeed3616f9041224f85b1d1a
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-
-      - name: Fetch deps
+      - name: Restore exact target source and reference artifacts
+        id: target_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .target
+          key: y70-ab14987696-b0a9599c6c01-inputs-v1
+      - name: Fetch pinned libraries
         env:
           KMSDK_TOKEN: ${{ secrets.KMSDK_TOKEN }}
         run: |
           git config --global url."https://x-access-token:${KMSDK_TOKEN}@github.com/".insteadOf "git@github.com:"
           scripts/fetch-deps.sh
-
-      - name: Build ${{ matrix.kmi }}
+      - name: Build against the exact unmodified target kernel
         run: |
-          make VER=${{ matrix.kmi }} > build.log 2>&1 || { tail -50 build.log; exit 1; }
-          tail -5 build.log
-
-      - name: Zero warning gate
+          mkdir -p out/y70/report
+          bash scripts/build-y70.sh 2>&1 | tee out/y70/report/build.log
+      - name: Verify symbol CRCs, namespaces and module metadata
         run: |
-          if grep -nE "error:|warning:" build.log; then
-            echo "build log is not clean"
+          python3 scripts/verify-y70.py --modules out/y70 --reference .target/reference --output out/y70/report/verification.json
+          if grep -nE '(^|[[:space:]])(error:|warning:)' out/y70/report/build.log; then
+            echo 'The build log contains errors or warnings.'
             exit 1
           fi
-
-      - uses: actions/upload-artifact@v4
+          cd out/y70
+          sha256sum droid_lkm.ko droid_lkm_compat.ko > SHA256SUMS.txt
+      - name: Upload validated modules
+        uses: actions/upload-artifact@v4
         with:
-          name: droid_lkm-${{ matrix.kmi }}
+          name: droid_lkm-y70-6.12.58-ab14987696
           path: |
-            out/${{ matrix.kmi }}/droid_lkm.ko
-            out/${{ matrix.kmi }}/droid_lkm_compat.ko
+            out/y70/droid_lkm.ko
+            out/y70/droid_lkm_compat.ko
+            out/y70/SHA256SUMS.txt
+            out/y70/report/verification.json
+          if-no-files-found: error
+      - name: Upload full diagnostic records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: y70-build-diagnostics
+          path: out/y70/report/
           if-no-files-found: warn
+      - name: Cache verified target inputs even if the module build fails
+        if: always() && steps.target_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .target
+          key: y70-ab14987696-b0a9599c6c01-inputs-v1

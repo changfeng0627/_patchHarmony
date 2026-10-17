@@ -1,0 +1,48 @@
+{
+  "build_id": 14987696,
+  "kernel_commit": "b0a9599c6c01ec540e2252ca3a0e87b5b8c47c97",
+  "artifacts": [
+    {
+      "name": "BUILD_INFO",
+      "algorithm": "sha256",
+      "digest": "447c68a9a9a054b81eaf15385127470783b53893e6155428e1defa320ee50226",
+      "size": 43136
+    },
+    {
+      "name": "System.map",
+      "algorithm": "sha256",
+      "digest": "3f085b7a7637fe89dc476fad299ca9475bf45f3a0dc8db1433407e4c767ec67c",
+      "size": 5941683
+    },
+    {
+      "name": "abi_symbollist.raw",
+      "algorithm": "sha256",
+      "digest": "487f987c44447c69b1112ae84403777ab155dd49c6137a95c2b8ced6d090bc88",
+      "size": 237690
+    },
+    {
+      "name": "kernel_aarch64_Module.symvers",
+      "algorithm": "sha256",
+      "digest": "5ec414183b3ca4261c12f1837f03bc65bc89447f584226b07b6987f2b7220834",
+      "size": 620247
+    },
+    {
+      "name": "kernel_aarch64_dot_config",
+      "algorithm": "sha256",
+      "digest": "7e7f2c244ee2dd835d3689dcaea2a64c9f9028fe018134d67eca75433c4d12da",
+      "size": 221042
+    },
+    {
+      "name": "manifest_14987696.xml",
+      "algorithm": "sha256",
+      "digest": "111dab4e5b663f03210a77067cb9b9caac611232dc73e9ae4fec7b4e1df59ef9",
+      "size": 8185
+    },
+    {
+      "name": "vmlinux",
+      "algorithm": "md5",
+      "digest": "9418e3ca6d07c43731d4c7ec6ac85cf4",
+      "size": 210731688
+    }
+  ]
+}

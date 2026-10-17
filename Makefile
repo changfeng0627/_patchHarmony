@@ -33,7 +33,8 @@ droid_lkm_compat-y := $(DLC_COMPAT_OBJS) $(DEPS_OBJS_ALL)
 # third ko in the same Kbuild: kernel features the device lacks, container scoped
 #   xt matches and targets through the exported registration API
 #   cgroup pids and device effect, devtmpfs, optional link types
-obj-m += droid_lkm_toy.o
+DROID_LKM_TOY ?= m
+obj-$(DROID_LKM_TOY) += droid_lkm_toy.o
 droid_lkm_toy-y := toy/toy_main.o $(DEPS_OBJS_ALL)
 
 # droid_lkm_misc.o is not built yet, it is unfinished; re-enable it with the
