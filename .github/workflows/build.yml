@@ -50,7 +50,7 @@ jobs:
             exit 1
           fi
           cd out/y70
-          sha256sum droid_lkm.ko droid_lkm_compat.ko > SHA256SUMS.txt
+          sha256sum droid_lkm.ko droid_lkm_compat.ko droidspaces-check > SHA256SUMS.txt
       - name: Upload validated modules
         uses: actions/upload-artifact@v4
         with:
@@ -58,6 +58,7 @@ jobs:
           path: |
             out/y70/droid_lkm.ko
             out/y70/droid_lkm_compat.ko
+            out/y70/droidspaces-check
             out/y70/SHA256SUMS.txt
             out/y70/report/verification.json
           if-no-files-found: error

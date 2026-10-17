@@ -85,6 +85,24 @@ pahole --version
 
 cp "$REFERENCE/kernel_aarch64_dot_config" "$BUILD/.config"
 cp "$REFERENCE/abi_symbollist.raw" "$BUILD/abi_symbollist.raw"
+python3 - "$SOURCE" "$BUILD" "$REPORT" <<'PY'
+import ast,sys
+from pathlib import Path
+source,build,report=map(Path,sys.argv[1:])
+tree=ast.parse((source/'modules.bzl').read_text())
+lists={n.targets[0].id:ast.literal_eval(n.value) for n in tree.body
+       if isinstance(n,ast.Assign) and isinstance(n.value,ast.List)}
+keys=['_COMMON_GKI_MODULES_LIST','_ARM64_GKI_MODULES_LIST',
+      '_KUNIT_FRAMEWORK_MODULES','_KUNIT_COMMON_MODULES_LIST','_KUNIT_CLK_MODULES_LIST']
+modules=[p for key in keys for p in lists[key]]
+protected=sorted(p for p in modules if p not in lists['_COMMON_UNPROTECTED_MODULES_LIST'])
+# Match BUILD.bazel:gki_aarch64_protected_module_names exactly.
+content='\n'.join(p.removesuffix('.ko') for p in protected)+'\n'
+assert protected and 'droid_lkm' not in content
+(build/'protected_module_names_list').write_text(content)
+(report/'protected_module_names_list').write_text(content)
+print('Generated exact target protected module list:',len(protected))
+PY
 make -C "$SOURCE" O="$BUILD" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
     KERNELRELEASE="$TARGET_RELEASE" rustavailable
 make -C "$SOURCE" O="$BUILD" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
@@ -98,6 +116,8 @@ cp "$REFERENCE/System.map" "$BUILD/System.map"
 cp "$REFERENCE/vmlinux" "$BUILD/vmlinux"
 export KDIR=$BUILD
 make VER=y70 DROID_LKM_TOY= KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)"
+aarch64-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror \
+    -o "$ROOT/out/y70/droidspaces-check" "$ROOT/scripts/droidspaces-check.c" -lrt
 cp "$BUILD/Module.symvers" "$REPORT/target.Module.symvers"
 cp "$ROOT/out/y70/Module.symvers" "$REPORT/module.Module.symvers"
 find out/y70 -maxdepth 1 -name '*.mod.c' -exec cp '{}' "$REPORT/" \;

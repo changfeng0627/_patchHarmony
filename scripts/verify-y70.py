@@ -136,7 +136,13 @@ def main():
             exports[name]=dict(crc=int(crc,16),provider=provider,kind=kind,namespace=fields[4] if len(fields)>4 else '')
         allowed=set((args.reference/'abi_symbollist.raw').read_text().splitlines())
         modules=[verify_module(args.modules/name,exports,allowed) for name in ('droid_lkm.ko','droid_lkm_compat.ko')]
+        test_binary=(args.modules/'droidspaces-check').read_bytes()
+        h=struct.unpack_from('<16sHHIQQQIHHHHHH',test_binary)
+        assert test_binary[:7]==b'\x7fELF\x02\x01\x01' and h[2]==183 and h[1] in (2,3)
+        assert h[9]==56
+        assert all(struct.unpack_from('<I',test_binary,h[5]+i*h[9])[0]!=3 for i in range(h[10])),'Test binary is not static'
         result=dict(status='PASS',target_release=RELEASE,build_id=14987696,modules=modules,
+            userspace_test=dict(name='droidspaces-check',architecture='AArch64',static_link=True,size=len(test_binary),sha256=hashlib.sha256(test_binary).hexdigest()),
             runtime_validation='NOT PERFORMED; static verification is not a device usability guarantee')
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2)+'\n')
