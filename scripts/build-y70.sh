@@ -52,6 +52,8 @@ grep -q '^[[:space:]]*s->module = exp->module;' "$SOURCE/scripts/mod/modpost.c"
 
 export ARCH=arm64 LLVM=1 LLVM_IAS=1
 export LIBCLANG_PATH=${LIBCLANG_PATH:-/opt/ddk/clang/clang-r536225/lib}
+# bindgen's CLANG_PATH is an executable, unlike LIBCLANG_PATH.
+export CLANG_PATH=$(command -v clang)
 packages=()
 if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists libelf libdw; then
     packages+=(pkg-config libelf-dev libdw-dev)
@@ -115,7 +117,8 @@ cp "$REFERENCE/kernel_aarch64_Module.symvers" "$BUILD/Module.symvers"
 cp "$REFERENCE/System.map" "$BUILD/System.map"
 cp "$REFERENCE/vmlinux" "$BUILD/vmlinux"
 export KDIR=$BUILD
-make VER=y70 DROID_LKM_TOY= KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)"
+make VER=y70 DROID_LKM_TOY= KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)" \
+    2>&1 | tee "$REPORT/module-build.log"
 aarch64-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror \
     -o "$ROOT/out/y70/droidspaces-check" "$ROOT/scripts/droidspaces-check.c" -lrt
 cp "$BUILD/Module.symvers" "$REPORT/target.Module.symvers"
