@@ -59,18 +59,24 @@ fi
 if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
     packages+=(gcc-aarch64-linux-gnu)
 fi
+if [ ! -f /usr/aarch64-linux-gnu/include/stdio.h ]; then
+    packages+=(libc6-dev-arm64-cross)
+fi
 if [ "${#packages[@]}" -gt 0 ]; then
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
 fi
 if ! command -v bindgen >/dev/null 2>&1; then
     # Exact clang-tools revision from manifest_14987696.xml.
-    curl --fail --location --retry 3 --connect-timeout 20 --max-time 120 \
-        'https://android.googlesource.com/platform/prebuilts/clang-tools/+/edb3c73c0398462492e7371fae68ce2db7afb6c7/linux-x86/bin/bindgen?format=TEXT' \
-        -o "$ROOT/.target/bindgen.base64"
-    base64 --decode "$ROOT/.target/bindgen.base64" > "$ROOT/.target/bindgen"
-    chmod +x "$ROOT/.target/bindgen"
-    export BINDGEN=$ROOT/.target/bindgen
+    if [ ! -x "$ROOT/.target/bindgen" ]; then
+        curl --fail --location --retry 3 --connect-timeout 20 --max-time 120 \
+            'https://android.googlesource.com/platform/prebuilts/clang-tools/+/edb3c73c0398462492e7371fae68ce2db7afb6c7/linux-x86/bin/bindgen?format=TEXT' \
+            -o "$ROOT/.target/bindgen.base64"
+        base64 --decode "$ROOT/.target/bindgen.base64" > "$ROOT/.target/bindgen"
+        chmod +x "$ROOT/.target/bindgen"
+    fi
+    # Kbuild assigns BINDGEN=bindgen, overriding an environment-only variable.
+    export PATH="$ROOT/.target:$PATH"
 fi
 clang --version | head -1
 rustc --version
