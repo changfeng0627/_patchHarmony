@@ -52,9 +52,16 @@ grep -q '^[[:space:]]*s->module = exp->module;' "$SOURCE/scripts/mod/modpost.c"
 
 export ARCH=arm64 LLVM=1 LLVM_IAS=1
 export LIBCLANG_PATH=${LIBCLANG_PATH:-/opt/ddk/clang/clang-r536225/lib}
+packages=()
 if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists libelf libdw; then
+    packages+=(pkg-config libelf-dev libdw-dev)
+fi
+if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+    packages+=(gcc-aarch64-linux-gnu)
+fi
+if [ "${#packages[@]}" -gt 0 ]; then
     apt-get update -qq
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libelf-dev libdw-dev
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
 fi
 if ! command -v bindgen >/dev/null 2>&1; then
     # Exact clang-tools revision from manifest_14987696.xml.
@@ -72,6 +79,8 @@ pahole --version
 
 cp "$REFERENCE/kernel_aarch64_dot_config" "$BUILD/.config"
 cp "$REFERENCE/abi_symbollist.raw" "$BUILD/abi_symbollist.raw"
+make -C "$SOURCE" O="$BUILD" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+    KERNELRELEASE="$TARGET_RELEASE" rustavailable
 make -C "$SOURCE" O="$BUILD" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
     KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)" olddefconfig modules_prepare
 cp "$BUILD/.config" "$REPORT/target.config"
