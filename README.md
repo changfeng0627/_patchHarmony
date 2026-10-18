@@ -10,7 +10,7 @@
 
 ## 下载和使用
 
-[下载 Y70 发布版](https://github.com/changfeng0627/_patchHarmony/releases/tag/y70-6.12.58-ab14987696-20261017)。选择 `droid_lkm-Y70-6.12.58-ab14987696-only.zip`，或者单独下载 `droid_lkm.ko` 和 `load_droid_lkm.sh`。
+[下载 Y70 发布版](https://github.com/changfeng0627/_patchHarmony/releases/tag/y70-6.12.58-ab14987696-20261018)。选择 `droid_lkm-Y70-6.12.58-ab14987696-only.zip`，或者单独下载 `droid_lkm.ko` 和 `load_droid_lkm.sh`。
 
 把 `load_droid_lkm.sh` 与 `droid_lkm.ko` 放在手机同一个文件夹，在 ZeroTermux 中进入该文件夹运行：
 
