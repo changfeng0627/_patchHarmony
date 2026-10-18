@@ -135,7 +135,8 @@ def main():
             crc,name,provider,kind=fields[:4]
             exports[name]=dict(crc=int(crc,16),provider=provider,kind=kind,namespace=fields[4] if len(fields)>4 else '')
         allowed=set((args.reference/'abi_symbollist.raw').read_text().splitlines())
-        modules=[verify_module(args.modules/name,exports,allowed) for name in ('droid_lkm.ko','droid_lkm_compat.ko')]
+        assert {p.name for p in args.modules.glob('*.ko')}=={'droid_lkm.ko'},'Only the Y70 main module is permitted'
+        modules=[verify_module(args.modules/name,exports,allowed) for name in ('droid_lkm.ko',)]
         test_binary=(args.modules/'droidspaces-check').read_bytes()
         h=struct.unpack_from('<16sHHIQQQIHHHHHH',test_binary)
         assert test_binary[:7]==b'\x7fELF\x02\x01\x01' and h[2]==183 and h[1] in (2,3)

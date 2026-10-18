@@ -1,0 +1,33 @@
+Y70 手动加载主模块（2026-10-18）
+
+当前手机文件位置：
+/storage/emulated/0/Download/load_droid_lkm.sh
+/storage/emulated/0/Download/droid_lkm.ko
+
+在已获 FolkPatch 授权的 ZeroTermux 里运行：
+sh /storage/emulated/0/Download/load_droid_lkm.sh
+
+脚本会自动请求 su。也可直接在 Root 终端执行相同命令。
+共享存储通常不可直接执行文件，请使用 sh，不要使用 ./load_droid_lkm.sh。
+脚本和 droid_lkm.ko 可以一起移动到其他文件夹，脚本自动读取自身同目录的模块。
+支持绝对路径或相对路径，以及包含空格、中文、单引号的文件夹；Root 提权后位置不丢失。
+例如先进入两者所在文件夹，再执行：
+sh ./load_droid_lkm.sh
+
+只检查、不加载：
+sh /storage/emulated/0/Download/load_droid_lkm.sh --check
+
+仅适用 Motorola XT2611-1，完整内核：
+6.12.58-android16-6-gb0a9599c6c01-ab14987696-4k
+模块 SHA256：
+7ccdc3283c8532f5f28b7422f87db6030de53a79f4682b7d3560ea9528157f74
+
+脚本检查型号、内核、架构和模块校验值；已加载且参数正确时直接成功退出。
+首次加载前复制到 Root 私有临时目录并再次校验，加载参数与实机验收一致：gate=1。
+它只加载主模块，不加载 compat 模块，不卸载模块，不刷机，不设开机自启。
+手机重启后需要重新运行；系统更新导致内核版本变化时脚本会拒绝加载。
+保持脚本与 droid_lkm.ko 在同一个文件夹，模块文件名保持 droid_lkm.ko。
+
+本次交付时 --check 与“已加载，无需重复加载”分支已在手机验证退出码为 0。
+当前模块仍在运行，没有为测试脚本强卸载后重新加载。
+实际 insmod 命令及相同模块此前已通过本机临时加载与 IPC/PID、Ubuntu 桌面验收。

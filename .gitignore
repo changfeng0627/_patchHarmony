@@ -12,4 +12,3 @@ out/
 Module.symvers
 modules.order
 test/
-compat/selftest.*

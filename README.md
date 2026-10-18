@@ -1,131 +1,66 @@
-# droid_lkm
+# 联想 Y70 新一代：Droidspaces 内核主模块
 
-out of tree kernel modules that give a stock GKI 6.12 kernel the namespace and
-IPC features container runtimes expect. android16-6.12 ships with
-CONFIG_SYSVIPC, CONFIG_POSIX_MQUEUE, CONFIG_PID_NS and CONFIG_IPC_NS turned
-off, so a container tool like Droidspaces cannot start anything at all. this
-project supplies those features from loadable modules, without recompiling the
-kernel and without moving a single struct member, so prebuilt vendor modules
-keep working.
+本仓库仅维护用户这台联想 Y70 新一代（系统报告型号 `Motorola XT2611-1`）的已核对内核：
 
-this repository is the `Kern/` submodule of the Droidspaces fork, published as
-`git@github.com:Dere3046/_patchHarmony.git`.
+```text
+6.12.58-android16-6-gb0a9599c6c01-ab14987696-4k
+```
 
-three modules are built:
+架构为 AArch64、4K 页，Root 为 APatch 分支 FolkPatch。其他型号、内核更新或其他 Root 环境均未验证。保留的源码、依赖和检查工具均服务于此主模块；不再提供其他设备兼容模块、实验模块或其他内核的构建入口。
 
-- `droid_lkm.ko` namespace and IPC support
-- `droid_lkm_compat.ko` vendor module quick fixups
-- `droid_lkm_misc.ko` the features this device kernel has compiled out that a
-  container still expects: runtime registered xt matches, a user namespace that
-  can be unshared, the per task id map files, and the control plane below
+## 下载和使用
 
-## what it provides
+[下载 Y70 发布版](https://github.com/changfeng0627/_patchHarmony/releases/tag/y70-6.12.58-ab14987696-20261017)。选择 `droid_lkm-Y70-6.12.58-ab14987696-only.zip`，或者单独下载 `droid_lkm.ko` 和 `load_droid_lkm.sh`。
 
-- fake pid and ipc namespaces: `unshare`, `clone`, `clone3` and `setns` for
-  CLONE_NEWPID and CLONE_NEWIPC, with per namespace lifetime handling
-- ported SysV IPC: the msg, sem and shm syscalls plus their per namespace
-  sysctls
-- ported POSIX mqueue: six mq syscalls, mqueuefs and its per namespace sysctls
-- `/proc/<pid>/ns/pid` and `/proc/<pid>/ns/ipc`, entries a kernel with those
-  namespaces compiled out never creates
-- `NSpid`, `NStgid`, `NSpgid` and `NSsid` lines in `/proc/<pid>/status`
-- vendor quick fixups in the second module: a ghost task handed out when a
-  vendor module asks `find_task_by_vpid` for a pid that only exists inside a
-  container namespace, and a bounded pid value on that task for vendor code
-  that indexes arrays by `p->pid`
-- the third module's surface: `/proc/<pid>/{uid_map,gid_map,setgroups}` and
-  `/proc/droid_lkm_misc/{status,version}`, so a userspace can ask what is
-  installed instead of probing for behaviour it may not get
+把 `load_droid_lkm.sh` 与 `droid_lkm.ko` 放在手机同一个文件夹，在 ZeroTermux 中进入该文件夹运行：
 
-## requirements
+```sh
+sh ./load_droid_lkm.sh
+```
 
-- ARM64 device running GKI 6.12
-- a way to load out of tree modules, for example a root solution or KernelPatch
-- Docker, for the DDK build container
-- the library set pinned in `deps.lst`, fetched by the LKM SDK
+脚本会申请 Root，核对型号、完整内核版本和模块 SHA256，并以 `gate=1` 加载主模块。支持移动文件夹、绝对或相对路径，以及中文、空格、单引号等路径。已加载且参数正确时跳过，不卸载或重复加载。共享存储通常不可直接执行脚本，因此需要 `sh`。
 
-## build
+只检查文件与私有副本，不加载：
 
-	scripts/fetch-deps.sh
-	scripts/build-ddkk.sh android16-6.12
+```sh
+sh ./load_droid_lkm.sh --check
+```
 
-`fetch-deps.sh` clones the SDK at the revision in `.sdk-version` and vendors
-every library listed in `deps.lst` below `deps/`. `build-ddkk.sh <target>` runs
-the DDK container and writes both modules plus their build tree into
-`out/<target>/`. library sources are never committed here, `deps.lst` pins the
-exact revision of each one.
+不刷机，不放宽 SELinux，不设开机自启。手机重启后需重新运行；系统更新后若内核不同则拒绝加载。该脚本的哈希固定为下面已实机验收的发布模块，不可直接搭配任意重建产物。
 
-`android15-6.6` is a supported target as well, same modules and features.
+## 验收范围
 
-## usage
+发布模块 SHA256：
 
-	insmod droid_lkm.ko
-	insmod droid_lkm_compat.ko
-	insmod droid_lkm_misc.ko
+```text
+7ccdc3283c8532f5f28b7422f87db6030de53a79f4682b7d3560ea9528157f74
+```
 
-load `droid_lkm.ko` before any container starts, then `droid_lkm_compat.ko` for
-the vendor fixups, then `droid_lkm_misc.ko`. the third resolves the one entry
-point it wants from the first by name at load time, so it also works alone.
-every module resolves its kernel symbols at load time and reports anything it
-cannot find; a missing core symbol aborts the load instead of leaving a half
-installed hook behind.
+这份二进制来自原构建提交 `40dd97881d673be44555409c6013892174eead89`，正常 modpost 生成版本记录，无 CRC/签名绕过。已验证 ELF/vermagic、196 个导入符号 CRC、结构布局、临时加载、IPC/PID 功能，以及用户原 Ubuntu 24.04.5 容器的 XFCE 显示和终端输入。桌面验收另有容器用户态兼容调整，不能认为只加载模块就会自动完成桌面安装。
 
-module parameters cover the usual cases: `mqueue`, `gate`, `verbose`,
-`skip_sysvipc` and `no_fake_ns` on the first module, `skip_do_exit` on its pid
-namespace part, `ghost` and `ghost_match` on the second, `xt`, `userns` and
-`captrace` and `devtmpfs` on the third, plus a write only `release` described
-below. each one is documented in its own `MODULE_PARM_DESC`.
-`ghost_match` selects vendor modules by name prefix and defaults to `oplus_`,
-`*` matches every caller. `captrace` logs every capability decision the kernel
-refuses to a container task, with the function that asked for it.
+SELinux 保持 Enforcing。桌面使用已验证的软件 llvmpipe；GPU 硬件加速、实际音频播放、Docker、用户命名空间、多容器隔离和长时间稳定性没有通过本次完整验收。模块仍是限定设备/内核的预发布版本。
 
-## vendor compatibility
+## 构建
 
-`droid_lkm.ko` is vendor neutral, everything it provides comes from the kernel
-side and behaves the same on any device.
+构建输入固定为 AOSP 内核提交 `b0a9599c6c01ec540e2252ca3a0e87b5b8c47c97`、官方构建 `14987696` 的配置/符号表/vmlinux 和 Clang 19.0.1 r536225。输入哈希见 `scripts/y70-reference.json`，依赖由 `.sdk-version` 与 `deps.lst` 固定。
 
-`droid_lkm_compat.ko` exists for OPPO and OnePlus kernels only. their vendor
-modules call `find_task_by_vpid` and use the returned task without checking it,
-and they index per pid arrays with `p->pid`. a pid that only exists inside a
-container namespace breaks both assumptions, which ends in a null dereference or
-an out of bounds access. the module answers those callers with a substitute task
-that carries a bounded pid, selected by module name prefix (`oplus_` by default,
-`*` matches every caller).
+GitHub Actions 的 `.github/workflows/build.yml` 仅构建 `droid_lkm.ko` 和用户态 `droidspaces-check`，并检查符号 CRC、命名空间、ELF 和构建警告。构建容器只提供工具链，使用目标未修改内核的 modpost。私有上游依赖需要仓库现有 `KMSDK_TOKEN`。
 
-Xiaomi devices do not install this module: MIUI and HyperOS vendor modules do not
-rely on that pattern, so the compat half is not needed there.
+在相同容器和依赖环境中：
 
-## known limits
+```sh
+scripts/fetch-deps.sh
+bash scripts/build-y70.sh
+python3 scripts/verify-y70.py --modules out/y70 --reference .target/reference --output out/y70/report/verification.json
+```
 
-- the user namespace is at its first level: unshare and clone produce one, the
-  credential, the namespace owners and the id map files are right, but the map is
-  the identity map, so a write that asks for anything else, and `setgroups` in a
-  container, are refused rather than half honoured
-- no idmapped mount lens, so a non identity mount cannot be permission checked
-- no cgroup pids or device controllers
-- no nftables match set, and only the addrtype xt match is ported so far
-- `NSpid` and its siblings are printed at the end of `/proc/<pid>/status`
-- devtmpfs' superblock holds a reference to the module, so `rmmod` is refused
-  while any mount of it is alive, which is what keeps a lazily unmounted
-  superblock from being torn down after the code is gone. write `1` to
-  `/sys/module/droid_lkm_misc/parameters/release` to drop the internal mount
-  before unloading, the same discipline as unmounting before `rmmod`
-- namespace lifetime is owned by the module: unloading while a container runs
-  leaves that namespace neutralized, and a namespace is not freed until then, so
-  `unshare(CLONE_NEWUSER)` leaves an object behind. `status` reports how many are
-  live
+产物在 `out/y70/`。CI 静态通过不等于重建二进制已在手机加载；新的文件哈希必须重新核对并验收，才应修改加载脚本中的固定哈希。仓库清理不改变上面已验收发布模块的二进制。
 
-## credits
+## 来源与许可
 
-- [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) by ravindu644,
-  the container runtime this work exists for
-- [KMSDK](https://github.com/Dere3046/KMSDK), the library SDK that fetches and
-  vendors the dependencies
-- [KallRecon](https://github.com/Dere3046/KallRecon), kernel symbol resolution
-- [Type_info](https://github.com/Dere3046/Type_info), runtime struct layout
-- [KernCall](https://github.com/Dere3046/KernCall), syscall table patching
-- [HooKern](https://github.com/Dere3046/HooKern), inline hook and kprobe engine
+GPL-2.0，保留原 LICENSE 和源码版权声明。
 
-## license
-
-GPL-2.0
+- [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS)
+- [原项目](https://github.com/Dere3046/_patchHarmony)
+- [KMSDK](https://github.com/Dere3046/KMSDK)
+- [KallRecon](https://github.com/Dere3046/KallRecon)、[Type_info](https://github.com/Dere3046/Type_info)、[KernCall](https://github.com/Dere3046/KernCall)、[HooKern](https://github.com/Dere3046/HooKern)

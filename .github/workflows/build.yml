@@ -1,13 +1,13 @@
-name: Build Y70 6.12.58 modules
+name: Build Lenovo Y70 6.12.58 main module
 
 on:
   push:
     paths:
       - 'src/**'
-      - 'compat/**'
       - 'Makefile'
       - 'mk/**'
       - 'deps.lst'
+      - '.sdk-version'
       - 'scripts/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
@@ -47,20 +47,19 @@ jobs:
           python3 scripts/verify-y70.py --modules out/y70 --reference .target/reference --output out/y70/report/verification.json
           # The unmodified kernel's Rust helper preparation emits a target-triple
           # diagnostic when linking aarch64-unknown-none with C helpers. It is not
-          # linked into these C-only LKMs. Enforce zero warnings on the LKMs.
+          # linked into this C-only LKM. Enforce zero warnings on the LKMs.
           if grep -nE '(^|[[:space:]])(error:|warning:)' out/y70/report/module-build.log; then
             echo 'The module compilation contains errors or warnings.'
             exit 1
           fi
           cd out/y70
-          sha256sum droid_lkm.ko droid_lkm_compat.ko droidspaces-check > SHA256SUMS.txt
-      - name: Upload validated modules
+          sha256sum droid_lkm.ko droidspaces-check > SHA256SUMS.txt
+      - name: Upload validated Y70 main module
         uses: actions/upload-artifact@v4
         with:
           name: droid_lkm-y70-6.12.58-ab14987696
           path: |
             out/y70/droid_lkm.ko
-            out/y70/droid_lkm_compat.ko
             out/y70/droidspaces-check
             out/y70/SHA256SUMS.txt
             out/y70/report/verification.json

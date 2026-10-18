@@ -117,7 +117,7 @@ cp "$REFERENCE/kernel_aarch64_Module.symvers" "$BUILD/Module.symvers"
 cp "$REFERENCE/System.map" "$BUILD/System.map"
 cp "$REFERENCE/vmlinux" "$BUILD/vmlinux"
 export KDIR=$BUILD
-make VER=y70 DROID_LKM_TOY= KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)" \
+make VER=y70 KERNELRELEASE="$TARGET_RELEASE" -j"$(nproc)" \
     2>&1 | tee "$REPORT/module-build.log"
 aarch64-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror \
     -o "$ROOT/out/y70/droidspaces-check" "$ROOT/scripts/droidspaces-check.c" -lrt
